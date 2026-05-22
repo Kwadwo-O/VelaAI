@@ -1,0 +1,246 @@
+<template>
+  <div class="page-wrapper">
+    
+    <div class="splash-container" if="{{ isSplash }}">
+      <image src="../../common/AI.png" class="splash-logo"></image>
+      <text class="splash-title">Vela AI</text>
+      <div class="loader-bar">
+        <div class="loader-fill"></div>
+      </div>
+    </div>
+
+    <div class="menu-container" if="{{ !isSplash }}">
+      <div class="header">
+        <image src="../../common/AI.png" class="menu-logo"></image>
+        <text class="menu-title">Vela AI</text>
+        <text class="menu-subtitle">Assistant Ready</text>
+      </div>
+
+      <div class="button-list">
+        <div class="pill-btn bg-blue" @click="startChat">
+          <text class="btn-text">Start Chat</text>
+          <text class="btn-icon">▶</text>
+        </div>
+
+        <div class="pill-btn bg-dark" @click="confirmLogout">
+          <text class="btn-text text-gray">Reset Token</text>
+          <text class="btn-icon text-gray">✕</text>
+        </div>
+      </div>
+      
+      <text class="footer-version">v1.0.0 stable</text>
+    </div>
+
+  </div>
+</template>
+
+<script>
+  import router from '@system.router'
+  import storage from '@system.storage'
+  import vibrator from '@system.vibrator'
+  import prompt from '@system.prompt'
+
+  export default {
+    private: {
+      isSplash: true
+    },
+
+    onInit() {
+      // Dynamically create or read a global app flag
+      const globalApp = this.$app.$def;
+      if (globalApp.isFirstIndexLoad === undefined) {
+        globalApp.isFirstIndexLoad = true;
+      }
+
+      if (globalApp.isFirstIndexLoad) {
+        // App just launched. Show splash sequence.
+        this.isSplash = true;
+        
+        // Splash screen timer: 1.8 seconds, then verify and route
+        setTimeout(() => {
+          this.verifyTokenAndRoute(true); // Signal it was a first-load check
+          // Update the global flag so we skip splash on next load
+          globalApp.isFirstIndexLoad = false;
+        }, 1800);
+      } else {
+        // App has been running (e.g. returning from chat). 
+        // Skip splash, and do a silent verification check.
+        this.isSplash = false;
+        this.verifyTokenAndRoute(false); // Signal it is a silent check
+      }
+    },
+
+    verifyTokenAndRoute(isFirstLoadCheck) {
+      storage.get({
+        key: 'API_KEY',
+        success: (data) => {
+          if (data && typeof data === 'string' && data.trim() !== '') {
+            // Token found! We stay here.
+            if (isFirstLoadCheck) {
+               this.isSplash = false;
+            }
+          } else {
+            // No token found. Route directly to pairing screen
+            router.replace({ uri: '/pages/key' });
+          }
+        },
+        fail: () => {
+          // Error reading storage, default to pairing screen
+          router.replace({ uri: '/pages/key' });
+        }
+      });
+    },
+
+    hapticFeedback() {
+      try { vibrator.vibrate({ mode: 'short' }); } catch(e){} 
+    },
+
+    startChat() {
+      this.hapticFeedback();
+      router.replace({ uri: '/pages/chat' });
+    },
+
+    confirmLogout() {
+      this.hapticFeedback();
+      prompt.showDialog({
+        title: 'Logout',
+        message: 'This will wipe your API key from the watch. Continue?',
+        buttons: [
+          { text: 'Clear All', color: '#dc2626' },
+          { text: 'Cancel', color: '#94a3b8' }
+        ],
+        success: (data) => {
+          if (data.index === 0) {
+            this.executeLogout();
+          }
+        }
+      });
+    },
+
+    executeLogout() {
+      storage.delete({
+        key: 'API_KEY',
+        // Using 'complete' ensures it routes even if the storage was already empty,
+        // preventing a silent fail and the automatic splash reload.
+        complete: () => {
+          prompt.showToast({ message: 'Token Deleted' });
+          router.replace({ uri: '/pages/key' }); 
+        }
+      });
+    }
+  }
+</script>
+
+<style>
+  .page-wrapper {
+    width: 480px;
+    height: 480px;
+    background-color: #050508;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* --- Splash Styles --- */
+  .splash-container {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .splash-logo {
+    width: 140px;
+    height: 140px;
+    border-radius: 70px;
+    margin-bottom: 20px;
+  }  
+  .splash-title {
+    font-size: 42px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 30px;
+  }
+  .loader-bar {
+    width: 200px;
+    height: 6px;
+    background-color: #1e2230;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .loader-fill {
+    width: 100px;
+    height: 6px;
+    background-color: #007aff;
+    animation-name: loading;
+    animation-duration: 1500ms;
+  }
+
+  /* --- Menu Styles --- */
+  .menu-container {
+    width: 380px; /* Safe area for squircle corners */
+    height: 440px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* This perfectly centers the whole group vertically */
+  }
+  .header {
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px; /* Space between header and buttons */
+  }
+  .menu-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 30px;
+    margin-bottom: 8px;
+  }
+  .menu-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffffff;
+  }
+  .menu-subtitle {
+    font-size: 18px;
+    color: #10b981; /* Green "online" look */
+    font-weight: bold;
+  }
+
+  .button-list {
+    flex-direction: column;
+    width: 360px;
+    align-items: center;
+  }
+  .pill-btn {
+    width: 340px;
+    height: 84px; /* Chunky, easy to tap */
+    border-radius: 42px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 30px;
+    padding-right: 24px;
+    margin-bottom: 16px;
+  }
+  .bg-blue { background-color: #007aff; }
+  .bg-dark { background-color: #1e2230; }
+
+  .btn-text {
+    font-size: 26px;
+    font-weight: bold;
+    color: #ffffff;
+  }
+  .btn-icon {
+    font-size: 24px;
+    color: #ffffff;
+  }
+  .text-gray { color: #94a3b8; }
+
+  .footer-version {
+    font-size: 14px;
+    color: #334155;
+    margin-top: 16px; /* Space between buttons and version text */
+  }
+
+  @keyframes loading {
+    from { width: 0px; }
+    to { width: 200px; }
+  }
+</style>

@@ -1,0 +1,187 @@
+<template>
+  <div class="keyboard-container" show="{{isVisible}}">
+    
+    <div class="key-row">
+      <text class="key {{activeKey === $item ? 'key-active' : ''}}" for="{{currentRow1}}" ontouchstart="handleTouchStart($item)" ontouchend="handleTouchEnd" onclick="pressKey($item)">{{$item}}</text>
+    </div>
+    
+    <div class="key-row">
+      <text class="key {{activeKey === $item ? 'key-active' : ''}}" for="{{currentRow2}}" ontouchstart="handleTouchStart($item)" ontouchend="handleTouchEnd" onclick="pressKey($item)">{{$item}}</text>
+    </div>
+    
+    <div class="key-row">
+      <text class="action-key side-btn {{isCaps && !isSymbols ? 'caps-on' : ''}} {{activeKey === 'caps' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('caps')" ontouchend="handleTouchEnd" onclick="toggleCaps">Caps</text>
+      
+      <text class="key {{activeKey === $item ? 'key-active' : ''}}" for="{{currentRow3}}" ontouchstart="handleTouchStart($item)" ontouchend="handleTouchEnd" onclick="pressKey($item)">{{$item}}</text>
+      
+      <text class="action-key side-btn delete {{activeKey === 'delete' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('delete')" ontouchend="handleTouchEnd" onclick="pressDelete">Del</text>
+    </div>
+
+    <div class="key-row bottom-row">
+      <text class="action-key switch-btn {{activeKey === 'mode' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('mode')" ontouchend="handleTouchEnd" onclick="toggleSymbols">{{isSymbols ? 'ABC' : '?123'}}</text>
+      
+      <text class="action-key space {{activeKey === 'space' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('space')" ontouchend="handleTouchEnd" onclick="pressSpace">Space</text>
+      
+      <text class="action-key switch-btn {{activeKey === 'close' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('close')" ontouchend="handleTouchEnd" onclick="closeKeyboard">Hide</text>
+    </div>
+
+  </div>
+</template>
+
+<style>
+  .keyboard-container {
+    flex-direction: column;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 290px; /* Reduced height since preview is gone */
+    background-color: #111111;
+    border-top-left-radius: 40px;
+    border-top-right-radius: 40px;
+    padding-top: 15px;
+    padding-bottom: 20px;
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .key-row {
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .bottom-row {
+    margin-top: 2px;
+  }
+
+  .key {
+    color: #ffffff;
+    font-size: 24px;
+    background-color: #2c2c2c;
+    border-radius: 10px;
+    width: 38px;
+    height: 46px;
+    text-align: center;
+    margin: 0 3px;
+  }
+  .key-active {
+    background-color: #666666;
+  }
+
+  .action-key {
+    color: #ffffff;
+    font-size: 20px;
+    background-color: #3a3a3a;
+    border-radius: 12px;
+    height: 46px;
+    text-align: center;
+    margin: 0 4px;
+  }
+  .action-active {
+    background-color: #666666;
+  }
+  
+  .caps-on {
+    background-color: #007aff;
+    color: #ffffff;
+  }
+
+  .side-btn { width: 62px; }
+  .switch-btn { width: 80px; }
+  .space { width: 140px; }
+  .delete { background-color: #ff3b30; }
+</style>
+
+<script>
+  import vibrator from '@system.vibrator'
+
+  export default {
+    props: {
+      isVisible: { default: false }
+    },
+    data: {
+      low1: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+      low2: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+      low3: ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+
+      up1: ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+      up2: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+      up3: ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+
+      num1: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+      num2: ['@', '#', '$', '%', '&', '*', '-', '+', '(', ')'],
+      num3: ['!', '"', '\'', ':', ';', '/', '?', ',', '.'],
+
+      currentRow1: [],
+      currentRow2: [],
+      currentRow3: [],
+      
+      isCaps: false,
+      isSymbols: false,
+      activeKey: ''
+    },
+
+    onInit() {
+      this.syncLayout();
+    },
+
+    handleTouchStart(keyId) { this.activeKey = keyId; },
+    handleTouchEnd() { this.activeKey = ''; },
+
+    hapticFeedback() {
+      try { vibrator.vibrate({ mode: 'short' }); } catch (e) {}
+    },
+
+    syncLayout() {
+      if (this.isSymbols) {
+        this.currentRow1 = [...this.num1];
+        this.currentRow2 = [...this.num2];
+        this.currentRow3 = [...this.num3];
+      } else {
+        if (this.isCaps) {
+          this.currentRow1 = [...this.up1];
+          this.currentRow2 = [...this.up2];
+          this.currentRow3 = [...this.up3];
+        } else {
+          this.currentRow1 = [...this.low1];
+          this.currentRow2 = [...this.low2];
+          this.currentRow3 = [...this.low3];
+        }
+      }
+    },
+
+    toggleCaps() {
+      this.hapticFeedback();
+      if (!this.isSymbols) {
+        this.isCaps = !this.isCaps;
+        this.syncLayout();
+      }
+    },
+
+    toggleSymbols() {
+      this.hapticFeedback();
+      this.isSymbols = !this.isSymbols;
+      this.syncLayout();
+    },
+
+    pressKey(letter) {
+      this.hapticFeedback();
+      this.$emit('keypress', { value: letter });
+    },
+
+    pressSpace() {
+      this.hapticFeedback();
+      this.$emit('keypress', { value: ' ' });
+    },
+
+    pressDelete() {
+      this.hapticFeedback();
+      this.$emit('delete');
+    },
+
+    closeKeyboard() {
+      this.hapticFeedback();
+      this.$emit('close');
+    }
+  }
+</script>

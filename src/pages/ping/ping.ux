@@ -1,0 +1,162 @@
+<template>
+  <div class="page">
+    <text class="status-text">{{ statusText }}</text>
+    <text class="sub-text">{{ subText }}</text>
+
+    <progress
+      class="loader"
+      percent="{{ loadPercent }}"
+      type="horizontal"
+      show="{{ loading }}"
+    ></progress>
+  </div>
+</template>
+
+<script>
+  import fetch from '@system.fetch'
+  import storage from '@system.storage'
+  import router from '@system.router'
+
+  export default {
+    private: {
+      statusText: 'Checking key...',
+      subText: 'Please wait',
+      loadPercent: 0,
+      loading: true,
+      _timer: null,
+      _isDestroyed: false // Guard flag to prevent background execution after unmount
+    },
+
+    onInit() {
+      this._isDestroyed = false
+    },
+
+    onReady() {
+      this.startProgressAnim()
+
+      storage.get({
+        key: 'apiKey',
+        success: (savedKey) => {
+          if (this._isDestroyed) return
+          if (!savedKey) {
+            this.showError('No key found')
+            return
+          }
+          this.pingAPI(savedKey)
+        },
+        fail: () => {
+          if (this._isDestroyed) return
+          this.showError('Could not read key')
+        }
+      })
+    },
+
+    onDestroy() {
+      // Mark component as dead immediately to cancel pending callbacks
+      this._isDestroyed = true
+      this.stopProgressAnim()
+    },
+
+    startProgressAnim() {
+      this.loadPercent = 0
+      this._timer = setInterval(() => {
+        if (this._isDestroyed) return
+        if (this.loadPercent < 85) {
+          this.loadPercent = this.loadPercent + 2
+        }
+      }, 120)
+    },
+
+    stopProgressAnim() {
+      if (this._timer !== null) {
+        clearInterval(this._timer)
+        this._timer = null
+      }
+    },
+
+    completeProgress() {
+      this.stopProgressAnim()
+      this.loadPercent = 100
+    },
+
+    pingAPI(savedKey) {
+      fetch.fetch({
+        url: 'https://openrouter.ai/api/v1/key',
+        method: 'GET',
+        header: {
+          'Authorization': 'Bearer ' + savedKey
+        },
+        responseType: 'json',
+        success: (response) => {
+          // Absolute protection: Ignore response if page was closed/changed
+          if (this._isDestroyed) return
+
+          if (response.code === 200) {
+            this.completeProgress()
+            this.statusText = 'Key valid!'
+            this.subText = 'Opening chat...'
+            
+            setTimeout(() => {
+              if (this._isDestroyed) return
+              router.replace({ uri: '/pages/chat' })
+            }, 800)
+          } else if (response.code === 401 || response.code === 403) {
+            this.showError('Invalid API key')
+          } else {
+            this.showError('Server error: ' + response.code)
+          }
+        },
+        fail: (data, code) => {
+          if (this._isDestroyed) return
+          this.showError('Network error')
+        }
+      })
+    },
+
+    showError(msg) {
+      if (this._isDestroyed) return
+      this.stopProgressAnim()
+      this.loading = false
+      this.statusText = 'X ' + msg + ' X'
+      this.subText = 'Returning to setup...'
+      
+      setTimeout(() => {
+        if (this._isDestroyed) return
+        router.replace({ uri: '/pages/index' })
+      }, 2000)
+    }
+  }
+</script>
+
+<style>
+.page {
+  width: 480px;
+  height: 480px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-text {
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 32px;
+}
+
+.sub-text {
+  margin-top: 20px;
+  width: 100%;
+  text-align: center;
+  color: #aaaaaa;
+  font-size: 24px;
+}
+
+.loader {
+  margin-top: 40px;
+  width: 360px;
+  stroke-width: 10px;
+  color: #1a73e8;
+  layer-color: #2a2a2a;
+}
+</style>

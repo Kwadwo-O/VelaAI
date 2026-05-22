@@ -1,0 +1,466 @@
+<import name="custom-keyboard" src="../../components/Keyboard.ux"></import>
+
+<template>
+  <div class="page-wrapper">
+
+    <div class="top-bar" show="{{ !isKeyboardOpen }}">
+      <div class="header-controls">
+        <div class="btn-icon bg-gray" @click="goBack">
+          <text class="icon-text">←</text>
+        </div>
+      </div>
+
+      <text class="app-title">VelaAI</text>
+
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        <text class="status-label">{{ syncStatus === 'Connected' ? 'On' : 'Off' }}</text>
+      </div>
+    </div>
+
+    <div class="input-row" show="{{ !isKeyboardOpen }}">
+      <div class="input-box" @click="openKeyboard">
+        <text class="input-text">{{ typedPrompt ? typedPrompt : 'Tap to type your prompt...' }}</text>
+      </div>
+      <div class="send-btn-container" @click="dispatchRequest">
+        <image src="../../common/Send.png" class="send-image-btn"></image>
+      </div>
+    </div>
+
+    <scroll class="response-viewport" show="{{ !isKeyboardOpen }}" scroll-y="true">
+      <div class="response-wrapper">
+        <text class="response-text">{{ aiResponse }}</text>
+      </div>
+    </scroll>
+
+    <div class="kb-preview-bar" show="{{ isKeyboardOpen }}">
+      <text class="kb-preview-text">{{ displayPrompt }}</text>
+      <div class="kb-send-btn-wrap" @click="sendFromKeyboard">
+        <image src="../../common/Send.png" class="kb-send-image"></image>
+      </div>
+    </div>
+
+    <custom-keyboard 
+      is-visible="{{ isKeyboardOpen }}" 
+      onkeypress="handleKeyPress" 
+      ondelete="handleDelete" 
+      onclose="closeKeyboard">
+    </custom-keyboard>
+
+  </div>
+</template>
+
+<script>
+  import fetch from '@system.fetch'
+  import storage from '@system.storage'
+  import vibrator from '@system.vibrator'
+  import router from '@system.router'
+
+  export default {
+    private: {
+      savedKey: '',
+      systemPrompt: "You are an assistant running on a smartwatch. Keep answers brief and under 3 sentences.",
+      typedPrompt: '',
+      displayPrompt: '...',
+      aiResponse: 'Ready. Type a message above.',
+      messageHistory: [], // Stores multi-turn conversation and reasoning
+      isGenerating: false,
+      isKeyboardOpen: false,
+      syncStatus: 'Checking...',
+      pingIntervalId: null,
+      isPageDestroyed: false
+    },
+
+    onInit() {
+      this.isPageDestroyed = false;
+    },
+
+    onShow() {
+      this.loadConfiguration();
+    },
+
+    onDestroy() {
+      this.isPageDestroyed = true;
+      this.stopPing();
+    },
+
+    loadConfiguration() {
+      storage.get({
+        key: 'API_KEY',
+        success: (data) => {
+          if (data && data.trim() !== '') {
+            this.savedKey = data.trim();
+            this.verifyKey();
+            this.startPing();
+          } else {
+            router.replace({ uri: '/pages/index' });
+          }
+        },
+        fail: () => {
+          router.replace({ uri: '/pages/index' });
+        }
+      });
+    },
+
+    startPing() {
+      this.stopPing();
+      this.pingIntervalId = setInterval(() => {
+        if (!this.isGenerating && !this.isKeyboardOpen) {
+          this.verifyKey();
+        }
+      }, 45000);
+    },
+
+    stopPing() {
+      if (this.pingIntervalId) {
+        clearInterval(this.pingIntervalId);
+        this.pingIntervalId = null;
+      }
+    },
+
+    verifyKey() {
+      if (this.isPageDestroyed || !this.savedKey) return;
+      const cleanToken = String(this.savedKey).trim();
+      const authHeaderValue = 'Bearer ' + cleanToken;
+      
+      fetch.fetch({
+        url: 'https://openrouter.ai/api/v1/models',
+        method: 'GET',
+        header: { 
+          'Authorization': authHeaderValue
+        },
+        responseType: 'json',
+        success: (res) => {
+          if (this.isPageDestroyed) return;
+          this.syncStatus = 'Connected';
+        },
+        fail: () => {
+          if (this.isPageDestroyed) return;
+          this.syncStatus = 'Offline';
+        }
+      });
+    },
+
+    resetKey() {
+      this.hapticFeedback();
+      this.stopPing();
+      storage.delete({
+        key: 'API_KEY',
+        complete: () => {
+          this.savedKey = '';
+          this.messageHistory = [];
+          router.replace({ uri: '/pages/index' });
+        }
+      });
+    },
+
+    goBack() {
+      this.hapticFeedback();
+      this.stopPing();
+      router.replace({ uri: '/pages/index' });
+    },
+
+    dispatchRequest() {
+      const userMessage = String(this.typedPrompt || '').trim();
+      const cleanToken = String(this.savedKey || '').trim();
+      
+      if (!userMessage || this.isGenerating || !cleanToken) {
+        return;
+      }
+      
+      this.isGenerating = true;
+      this.aiResponse = 'Thinking...';
+      
+      // Clear inputs
+      this.typedPrompt = ''; 
+      this.refreshDisplayPrompt();
+
+      // 1. Push user message to conversation history
+      this.messageHistory.push({
+        role: 'user',
+        content: userMessage
+      });
+
+      const authHeaderValue = 'Bearer ' + cleanToken;
+      
+      // --- LIVE CONTEXT INJECTION ---
+      const now = new Date();
+      const dateString = now.toDateString(); 
+      const timeString = now.toLocaleTimeString();
+      const dynamicSystemMessage = `${this.systemPrompt} The current date is ${dateString} and the local time is ${timeString}. The user is currently located in Egypt.`;
+      
+      // 2. Build full payload with dynamic system prompt and conversation history
+      const payloadMessages = [
+        { role: 'system', content: dynamicSystemMessage },
+        ...this.messageHistory
+      ];
+
+      fetch.fetch({
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        method: 'POST',
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeaderValue,
+          'HTTP-Referer': 'https://velaai.app', 
+          'X-Title': 'VelaAI Watch'
+        },
+        data: JSON.stringify({
+          model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+          messages: payloadMessages,
+          reasoning: { enabled: true },
+          temperature: 0.5
+        }),
+        responseType: 'json',
+        success: (res) => {
+          this.isGenerating = false;
+          let responseData = res.data;
+          
+          if (typeof responseData === 'string') {
+            try { responseData = JSON.parse(responseData); } catch(e){}
+          }
+
+          if (res.code !== 200) {
+            this.aiResponse = responseData && responseData.error ? 
+              'API Error: ' + responseData.error.message : 
+              'HTTP Error: ' + res.code;
+            
+            // Pop the failed user message out of history
+            this.messageHistory.pop();
+            return;
+          }
+
+          if (responseData && responseData.choices && responseData.choices.length > 0) {
+            const assistantMsg = responseData.choices[0].message;
+            this.aiResponse = assistantMsg.content ? assistantMsg.content.trim() : 'Processing complete.';
+            
+            // 3. Save AI response to history, preserving reasoning data if it exists
+            let historyEntry = {
+              role: 'assistant',
+              content: assistantMsg.content
+            };
+            
+            if (assistantMsg.reasoning_details) {
+               historyEntry.reasoning_details = assistantMsg.reasoning_details;
+            }
+
+            this.messageHistory.push(historyEntry);
+
+          } else if (responseData && responseData.error) {
+            this.aiResponse = 'Model Error: ' + responseData.error.message;
+            this.messageHistory.pop();
+          } else {
+            this.aiResponse = 'Unknown format: ' + JSON.stringify(responseData).substring(0, 60) + '...';
+            this.messageHistory.pop();
+          }
+        },
+        fail: (data, code) => {
+          this.isGenerating = false;
+          this.aiResponse = 'Network Error. Code: ' + code;
+          this.syncStatus = 'Offline';
+          this.messageHistory.pop();
+        }
+      });
+    },
+
+    refreshDisplayPrompt() {
+      const maxChars = 20; 
+      if (!this.typedPrompt || this.typedPrompt.length === 0) {
+        this.displayPrompt = '...';
+      } else if (this.typedPrompt.length > maxChars) {
+        this.displayPrompt = '...' + this.typedPrompt.substring(this.typedPrompt.length - maxChars);
+      } else {
+        this.displayPrompt = this.typedPrompt;
+      }
+    },
+
+    sendFromKeyboard() {
+      this.closeKeyboard();
+      this.dispatchRequest();
+    },
+
+    handleKeyPress(e) {
+      this.hapticFeedback();
+      this.typedPrompt += e.detail.value;
+      this.refreshDisplayPrompt();
+    },
+
+    handleDelete() {
+      this.hapticFeedback();
+      if (this.typedPrompt.length > 0) {
+        this.typedPrompt = this.typedPrompt.substring(0, this.typedPrompt.length - 1);
+        this.refreshDisplayPrompt();
+      }
+    },
+
+    openKeyboard() { 
+      this.isKeyboardOpen = true; 
+    },
+    
+    closeKeyboard() { 
+      this.hapticFeedback(); 
+      this.isKeyboardOpen = false; 
+    },
+
+    hapticFeedback() { 
+      try { vibrator.vibrate({ mode: 'short' }); } catch(e){} 
+    }
+  }
+</script>
+
+<style>
+  .page-wrapper {
+    width: 480px; 
+    height: 480px;
+    background-color: #050508; 
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px; 
+  }
+  
+  /* --- Header Area --- */
+  .top-bar {
+    width: 360px; 
+    height: 72px; 
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header-controls {
+    flex-direction: row;
+    align-items: center;
+  }
+  .app-title {
+    font-size: 28px; 
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+  }
+  .btn-icon {
+    width: 52px; 
+    height: 52px;
+    border-radius: 26px;
+    justify-content: center;
+    align-items: center;
+  }
+  .bg-gray { background-color: #1e2230; }
+  .icon-text {
+    font-size: 26px;
+    color: #ffffff;
+    font-weight: bold;
+  }
+  .status-pill {
+    flex-direction: row;
+    align-items: center;
+    background-color: #1e2230;
+    border-radius: 24px;
+    padding-left: 16px;
+    padding-right: 16px;
+    height: 44px; 
+  }
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    margin-right: 8px;
+    background-color: #10b981;
+  }
+  .status-label { 
+    font-size: 20px; 
+    font-weight: bold; 
+    color: #e2e8f0;
+  }
+
+  /* --- Input Area --- */
+  .input-row {
+    width: 360px; 
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 16px; 
+  }
+  .input-box {
+    flex: 1;
+    height: 68px; 
+    background-color: #141622;
+    border-radius: 34px;
+    padding-left: 24px;
+    padding-right: 24px;
+    justify-content: center;
+    margin-right: 12px;
+  }
+  .input-text {
+    font-size: 24px; 
+    color: #94a3b8;
+    lines: 1;
+    text-overflow: ellipsis;
+  }
+  .send-btn-container {
+    width: 68px; 
+    height: 68px;
+    border-radius: 34px;
+    background-color: #007aff;
+    justify-content: center;
+    align-items: center;
+  }
+  .send-image-btn {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+
+  /* --- Chat Viewport --- */
+  .response-viewport {
+    width: 370px; 
+    height: 220px; 
+    background-color: #0d0e14; 
+    border-radius: 30px; 
+    flex-direction: column; /* Required for vertical list scrolling */
+  }
+  .response-wrapper {
+    padding: 24px; 
+    padding-bottom: 40px; /* Extra padding so the last line clears the curved bezel */
+    flex-direction: column;
+  }
+  .response-text {
+    font-size: 24px; 
+    color: #f8fafc;
+    line-height: 36px;
+  }
+  
+  /* --- Keyboard Preview Bar (Floating Pill) --- */
+  .kb-preview-bar {
+    position: absolute;
+    bottom: 300px; 
+    left: 40px;    
+    width: 400px;
+    height: 64px;
+    background-color: #1e2230;
+    border-radius: 32px; 
+    border: 2px solid #3b4257; 
+    flex-direction: row;
+    align-items: center;
+    padding-left: 24px;
+    padding-right: 8px; 
+    justify-content: space-between;
+  }
+  .kb-preview-text {
+    font-size: 26px;
+    color: #ffffff;
+    flex: 1;
+    lines: 1;
+  }
+  .kb-send-btn-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 24px;
+    background-color: #007aff;
+    justify-content: center;
+    align-items: center;
+  }
+  .kb-send-image {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+  }
+</style>

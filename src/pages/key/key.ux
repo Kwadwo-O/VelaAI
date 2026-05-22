@@ -1,0 +1,453 @@
+<template>
+  <div class="page-wrapper">
+    
+    <div class="container" show="{{ !isQrFullscreen }}">
+      
+      <div class="status-header">
+        <div class="status-pill">
+          <div class="status-dot {{ statusDotClass }}"></div>
+          <text class="status-text {{ statusTextClass }}">{{ syncStatus }}</text>
+        </div>
+      </div>
+
+      <div class="key-card">
+        <div class="qr-preview-box" @click="toggleQrScale">
+          <div class="qr-safe-zone">
+            <qrcode value="https://asermohamed2009.pythonanywhere.com/login-ai" class="thumbnail-qr"></qrcode>
+          </div>
+          <text class="tap-hint">Tap QR to enlarge</text>
+        </div>
+
+        <div class="otp-display-container">
+          <text class="otp-label">OTP:</text>
+          <text class="otp-number">{{ generatedOtp }}</text>
+        </div>
+        
+        <text class="key-label">Active Token</text>
+        <text class="key-value">{{ maskedKey }}</text>
+      </div>
+
+      <div class="action-row">
+        <div class="control-btn back-btn" @click="handleGoBack">
+          <text class="btn-text back-text">Back</text>
+        </div>
+        
+        <div class="control-btn chat-btn" @click="proceedToChat">
+          <text class="btn-text">Chat</text>
+        </div>
+      </div>
+    </div>
+
+    <div class="fullscreen-qr-overlay" show="{{ isQrFullscreen }}" @click="toggleQrScale">
+      <text class="fullscreen-title">Scan to Pair</text>
+      <div class="white-qr-backdrop">
+        <qrcode value="https://asermohamed2009.pythonanywhere.com/login-ai" class="maximized-qr"></qrcode>
+      </div>
+      <div class="close-pill">
+        <text class="close-hint">Tap to close</text>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script>
+  import fetch from '@system.fetch'
+  import storage from '@system.storage'
+  import router from '@system.router'
+  import prompt from '@system.prompt'
+
+  export default {
+    protected: {
+      clearKey: 'false'
+    },
+    private: {
+      rawApiKey: '',
+      maskedKey: 'Checking...',
+      syncStatus: 'Checking storage...',
+      
+      statusDotClass: 'bg-gray',
+      statusTextClass: 'text-gray',
+      
+      isQrFullscreen: false,
+      generatedOtp: '------',
+      pollIntervalId: null,
+      isPageDestroyed: false
+    },
+
+    onInit() {
+      this.isPageDestroyed = false;
+    },
+
+    onShow() {
+      if (this.clearKey === 'true' || this.clearKey === true) {
+        this.wipeCorruptStorage();
+      } else {
+        this.checkStoredKey();
+      }
+    },
+
+    onDestroy() {
+      this.isPageDestroyed = true;
+      this.stopPolling();
+    },
+
+    wipeCorruptStorage() {
+      storage.delete({
+        key: 'API_KEY',
+        complete: () => {
+          this.clearKey = 'false';
+          this.rawApiKey = '';
+          this.maskedKey = 'No Token Linked';
+          this.syncStatus = 'Waiting for web sync...';
+          this.statusDotClass = 'bg-blue';
+          this.statusTextClass = 'text-blue';
+          this.preparePairing();
+        }
+      });
+    },
+
+    checkStoredKey() {
+      this.syncStatus = 'Verifying Token...';
+      this.statusDotClass = 'bg-gray';
+      this.statusTextClass = 'text-gray';
+
+      storage.get({
+        key: 'API_KEY',
+        success: (data) => {
+          if (data && typeof data === 'string' && data.trim() !== '' && data !== 'undefined' && data !== 'null' && data.length > 10) {
+            const tokenToTest = data.trim();
+            
+            fetch.fetch({
+              url: 'https://openrouter.ai/api/v1/models',
+              method: 'GET',
+              header: { // Fix: Swapped 'headers' to 'header' to match your chat.ux fix
+                'Authorization': 'Bearer ' + tokenToTest
+              },
+              responseType: 'json',
+              success: (res) => {
+                if (this.isPageDestroyed) return;
+
+                let responseData = res.data;
+                if (typeof responseData === 'string') {
+                  try { responseData = JSON.parse(responseData); } catch(e){}
+                }
+
+                if (responseData && !responseData.error) {
+                  this.rawApiKey = tokenToTest;
+                  this.maskKeyDisplay(this.rawApiKey);
+                  this.syncStatus = 'Connected';
+                  this.statusDotClass = 'bg-green';
+                  this.statusTextClass = 'text-green';
+                  
+                  // Auto-forwarding removed to allow user to see status, they can tap Chat
+                } else {
+                  this.wipeCorruptStorage();
+                }
+              },
+              fail: () => {
+                if (this.isPageDestroyed) return;
+                this.rawApiKey = tokenToTest;
+                this.maskKeyDisplay(this.rawApiKey);
+                this.syncStatus = 'Offline Mode';
+                this.statusDotClass = 'bg-red';
+                this.statusTextClass = 'text-red';
+              }
+            });
+          } else {
+            this.wipeCorruptStorage();
+          }
+        },
+        fail: () => {
+          this.maskedKey = 'Storage Error';
+          this.preparePairing();
+        }
+      });
+    },
+
+    preparePairing() {
+      this.generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      this.startPolling();
+    },
+
+    startPolling() {
+      this.stopPolling();
+      this.pollIntervalId = setInterval(() => {
+        this.checkServerForKey();
+      }, 4000);
+    },
+
+    stopPolling() {
+      if (this.pollIntervalId) {
+        clearInterval(this.pollIntervalId);
+        this.pollIntervalId = null;
+      }
+    },
+
+    checkServerForKey() {
+      if (this.isPageDestroyed) return;
+      fetch.fetch({
+        url: 'https://asermohamed2009.pythonanywhere.com/api/get_key?otp=' + this.generatedOtp,
+        method: 'GET',
+        responseType: 'json',
+        success: (response) => {
+          if (this.isPageDestroyed) return;
+
+          let resData = response.data;
+          if (typeof resData === 'string') {
+            try { resData = JSON.parse(resData); } catch(e) {}
+          }
+
+          if (resData && resData.status === 'success' && resData.api_key) {
+            const receivedKey = String(resData.api_key).trim();
+            
+            if (receivedKey === '' || receivedKey === 'null' || receivedKey === 'undefined') {
+              return;
+            }
+
+            this.stopPolling();
+            this.rawApiKey = receivedKey;
+            this.maskKeyDisplay(this.rawApiKey);
+            this.syncStatus = 'Authenticated!';
+            this.statusDotClass = 'bg-green';
+            this.statusTextClass = 'text-green';
+
+            storage.set({
+              key: 'API_KEY',
+              value: this.rawApiKey,
+              success: () => {
+                prompt.showToast({ message: 'Linked Successfully!', duration: 2000 });
+                // We keep the user on the screen so they can see the success state
+              }
+            });
+          }
+        }
+      });
+    },
+
+    maskKeyDisplay(keyStr) {
+      if (keyStr && keyStr.length > 12) {
+        this.maskedKey = keyStr.substring(0, 7) + '...' + keyStr.substring(keyStr.length - 4);
+      } else {
+        this.maskedKey = 'Active Secured';
+      }
+    },
+
+    toggleQrScale() {
+      this.isQrFullscreen = !this.isQrFullscreen;
+    },
+
+    proceedToChat() {
+      this.stopPolling();
+      router.replace({ uri: '/pages/chat' });
+    },
+
+    handleGoBack() {
+      this.stopPolling();
+      router.replace({ uri: '/pages/index' });
+    }
+  }
+</script>
+
+<style>
+  .page-wrapper {
+    width: 480px;
+    height: 480px;
+    background-color: #050508;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+  .container {
+    width: 380px; /* Safe area from bezels */
+    height: 460px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 10px;
+  }
+  
+  /* --- Status Pill --- */
+  .status-header {
+    width: 380px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .status-pill {
+    flex-direction: row;
+    align-items: center;
+    background-color: #1e2230;
+    border-radius: 24px;
+    padding-left: 18px;
+    padding-right: 18px;
+    height: 44px;
+  }
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    margin-right: 10px;
+  }
+  
+  /* Color Palette Matching Chat/Index */
+  .bg-gray  { background-color: #94a3b8; }
+  .bg-blue  { background-color: #007aff; }
+  .bg-green { background-color: #10b981; }
+  .bg-red   { background-color: #ef4444; }
+
+  .text-gray  { color: #94a3b8; }
+  .text-blue  { color: #007aff; }
+  .text-green { color: #10b981; }
+  .text-red   { color: #ef4444; }
+
+  .status-text {
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  /* --- Main Card --- */
+  .key-card {
+    width: 380px;
+    background-color: #141622;
+    border-radius: 34px;
+    padding: 20px;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  /* QR Code Strict Fix */
+  .qr-preview-box {
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .qr-safe-zone {
+    width: 120px;
+    height: 120px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .thumbnail-qr {
+    width: 104px;
+    height: 104px;
+  }
+  .tap-hint {
+    font-size: 18px;
+    color: #64748b;
+    font-weight: bold;
+  }
+
+  /* OTP Display */
+  .otp-display-container {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: #050508;
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    border: 2px solid #1e2230;
+  }
+  .otp-label {
+    font-size: 22px;
+    color: #94a3b8;
+    margin-right: 8px;
+    font-weight: bold;
+  }
+  .otp-number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #007aff;
+    letter-spacing: 4px;
+  }
+
+  /* Token Display */
+  .key-label {
+    font-size: 20px;
+    color: #64748b;
+    margin-bottom: 4px;
+    font-weight: bold;
+  }
+  .key-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+  }
+
+  /* --- Action Row --- */
+  .action-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 370px;
+  }
+  .control-btn {
+    width: 176px;
+    height: 64px;
+    border-radius: 32px;
+    justify-content: center;
+    align-items: center;
+  }
+  .chat-btn { 
+    background-color: #007aff; 
+  }
+  .back-btn {
+    background-color: #1e2230;
+  }
+  .btn-text {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .back-text { 
+    color: #e2e8f0; 
+  }
+
+  /* --- Fullscreen QR Overlay --- */
+  .fullscreen-qr-overlay {
+    width: 480px;
+    height: 480px;
+    background-color: #050508;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+  }
+  .fullscreen-title {
+    font-size: 32px;
+    color: #ffffff;
+    font-weight: bold;
+    margin-bottom: 24px;
+  }
+  .white-qr-backdrop {
+    width: 320px;
+    height: 320px;
+    background-color: #ffffff;
+    border-radius: 24px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  .maximized-qr {
+    width: 280px;
+    height: 280px;
+  }
+  .close-pill {
+    background-color: #1e2230;
+    padding: 12px 24px;
+    border-radius: 24px;
+  }
+  .close-hint {
+    font-size: 22px;
+    color: #e2e8f0;
+    font-weight: bold;
+  }
+</style>

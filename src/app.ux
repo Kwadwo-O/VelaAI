@@ -1,0 +1,11 @@
+<script>
+  export default {
+    // Persistent memory allocation shared across all pages
+    globalData: {
+      skipMenuRedirect: false
+    },
+    onCreate() {
+      console.info('Application instance initialized');
+    }
+  }
+</script>
