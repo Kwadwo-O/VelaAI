@@ -1,7 +1,11 @@
 {
   "package": "com.vela.openrouter.ai",
   "name": "Vela Ai",
+<<<<<<< HEAD
   "versionName": "1.0.0",
+=======
+  "versionName": "1.1.0",
+>>>>>>> 4ec62ed (update)
   "versionCode": 1,
   "minPlatformVersion": 1000,
   "icon": "/common/logo.png",
@@ -14,7 +18,8 @@
     {"name": "system.prompt"},
     {"name": "system.router"},
     { "name": "system.storage"},
-    { "name": "system.fetch" }
+    { "name": "system.fetch" },
+    { "name": "system.app" }
   ] ,
   "config": {
     "logLevel": "log",

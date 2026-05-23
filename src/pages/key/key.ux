@@ -116,13 +116,19 @@
         key: 'API_KEY',
         success: (data) => {
           if (data && typeof data === 'string' && data.trim() !== '' && data !== 'undefined' && data !== 'null' && data.length > 10) {
-            const tokenToTest = data.trim();
+            const tokenToTest = String(data).trim();
+            const authHeaderValue = 'Bearer ' + tokenToTest;
             
             fetch.fetch({
               url: 'https://openrouter.ai/api/v1/models',
               method: 'GET',
+<<<<<<< HEAD
               header: { // Fix: Swapped 'headers' to 'header' to match your chat.ux fix
                 'Authorization': 'Bearer ' + tokenToTest
+=======
+              headers: { 
+                'Authorization': authHeaderValue
+>>>>>>> 4ec62ed (update)
               },
               responseType: 'json',
               success: (res) => {
@@ -139,8 +145,11 @@
                   this.syncStatus = 'Connected';
                   this.statusDotClass = 'bg-green';
                   this.statusTextClass = 'text-green';
+<<<<<<< HEAD
                   
                   // Auto-forwarding removed to allow user to see status, they can tap Chat
+=======
+>>>>>>> 4ec62ed (update)
                 } else {
                   this.wipeCorruptStorage();
                 }
@@ -217,7 +226,10 @@
               value: this.rawApiKey,
               success: () => {
                 prompt.showToast({ message: 'Linked Successfully!', duration: 2000 });
+<<<<<<< HEAD
                 // We keep the user on the screen so they can see the success state
+=======
+>>>>>>> 4ec62ed (update)
               }
             });
           }
@@ -253,13 +265,21 @@
   .page-wrapper {
     width: 480px;
     height: 480px;
+<<<<<<< HEAD
     background-color: #050508;
+=======
+    background-image: url('../../common/bg.png');
+>>>>>>> 4ec62ed (update)
     justify-content: center;
     align-items: center;
     flex-direction: column;
   }
   .container {
+<<<<<<< HEAD
     width: 380px; /* Safe area from bezels */
+=======
+    width: 380px;
+>>>>>>> 4ec62ed (update)
     height: 460px;
     flex-direction: column;
     align-items: center;
@@ -289,12 +309,17 @@
     border-radius: 6px;
     margin-right: 10px;
   }
+<<<<<<< HEAD
   
   /* Color Palette Matching Chat/Index */
   .bg-gray  { background-color: #94a3b8; }
   .bg-blue  { background-color: #007aff; }
+=======
+  .bg-gray   { background-color: #94a3b8; }
+  .bg-blue   { background-color: #007aff; }
+>>>>>>> 4ec62ed (update)
   .bg-green { background-color: #10b981; }
-  .bg-red   { background-color: #ef4444; }
+  .bg-red    { background-color: #ef4444; }
 
   .text-gray  { color: #94a3b8; }
   .text-blue  { color: #007aff; }
@@ -408,8 +433,11 @@
   .back-text { 
     color: #e2e8f0; 
   }
+<<<<<<< HEAD
 
   /* --- Fullscreen QR Overlay --- */
+=======
+>>>>>>> 4ec62ed (update)
   .fullscreen-qr-overlay {
     width: 480px;
     height: 480px;

@@ -2,6 +2,7 @@
   <div class="keyboard-container" show="{{isVisible}}">
     
     <div class="key-row">
+<<<<<<< HEAD
       <text class="key {{activeKey === $item ? 'key-active' : ''}}" for="{{currentRow1}}" ontouchstart="handleTouchStart($item)" ontouchend="handleTouchEnd" onclick="pressKey($item)">{{$item}}</text>
     </div>
     
@@ -23,11 +24,88 @@
       <text class="action-key space {{activeKey === 'space' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('space')" ontouchend="handleTouchEnd" onclick="pressSpace">Space</text>
       
       <text class="action-key switch-btn {{activeKey === 'close' ? 'action-active' : ''}}" ontouchstart="handleTouchStart('close')" ontouchend="handleTouchEnd" onclick="closeKeyboard">Hide</text>
+=======
+      <text 
+        class="key {{activeKey === $item ? 'key-active' : ''}}" 
+        for="{{currentRow1}}" 
+        ontouchstart="handleTouchStart($item)" 
+        ontouchend="handleTouchEnd" 
+        onclick="pressKey($item)">
+        {{$item}}
+      </text>
+    </div>
+    
+    <div class="key-row">
+      <text 
+        class="key {{activeKey === $item ? 'key-active' : ''}}" 
+        for="{{currentRow2}}" 
+        ontouchstart="handleTouchStart($item)" 
+        ontouchend="handleTouchEnd" 
+        onclick="pressKey($item)">
+        {{$item}}
+      </text>
+    </div>
+    
+    <div class="key-row-mixed">
+      <text 
+        class="action-key side-btn {{isCaps && !isSymbols ? 'caps-on' : ''}} {{activeKey === 'caps' ? 'action-active' : ''}}" 
+        ontouchstart="handleTouchStart('caps')" 
+        ontouchend="handleTouchEnd" 
+        onclick="toggleCaps">
+        {{isSymbols ? '1/2' : 'cap'}}
+      </text>
+      
+      <div class="inner-chars">
+        <text 
+          class="key {{activeKey === $item ? 'key-active' : ''}}" 
+          for="{{currentRow3}}" 
+          ontouchstart="handleTouchStart($item)" 
+          ontouchend="handleTouchEnd" 
+          onclick="pressKey($item)">
+          {{$item}}
+        </text>
+      </div>
+      
+      <text 
+        class="action-key side-btn delete-btn {{activeKey === 'delete' ? 'delete-active' : ''}}" 
+        ontouchstart="handleTouchStart('delete')" 
+        ontouchend="handleTouchEnd" 
+        onclick="pressDelete">
+        ◀
+      </text>
+    </div>
+
+    <div class="key-row bottom-row">
+      <text 
+        class="action-key switch-btn {{activeKey === 'mode' ? 'action-active' : ''}}" 
+        ontouchstart="handleTouchStart('mode')" 
+        ontouchend="handleTouchEnd" 
+        onclick="toggleSymbols">
+        {{isSymbols ? 'ABC' : '?123'}}
+      </text>
+      
+      <text 
+        class="action-key space-btn {{activeKey === 'space' ? 'space-active' : ''}}" 
+        ontouchstart="handleTouchStart('space')" 
+        ontouchend="handleTouchEnd" 
+        onclick="pressSpace">
+        Space
+      </text>
+      
+      <text 
+        class="action-key switch-btn close-btn {{activeKey === 'close' ? 'action-active' : ''}}" 
+        ontouchstart="handleTouchStart('close')" 
+        ontouchend="handleTouchEnd" 
+        onclick="closeKeyboard">
+        ✕
+      </text>
+>>>>>>> 4ec62ed (update)
     </div>
 
   </div>
 </template>
 
+<<<<<<< HEAD
 <style>
   .keyboard-container {
     flex-direction: column;
@@ -92,6 +170,8 @@
   .delete { background-color: #ff3b30; }
 </style>
 
+=======
+>>>>>>> 4ec62ed (update)
 <script>
   import vibrator from '@system.vibrator'
 
@@ -184,4 +264,124 @@
       this.$emit('close');
     }
   }
+<<<<<<< HEAD
 </script>
+=======
+</script>
+
+<style>
+  .keyboard-container {
+    flex-direction: column;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 440px;
+    height: 275px; 
+    background-color: rgba(14, 16, 25, 0.95);
+    border-top-left-radius: 36px;
+    border-top-right-radius: 36px;
+    padding-top: 14px;
+    padding-bottom: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* --- Layout Alignment Structures --- */
+  .key-row {
+    flex-direction: row;
+    width: 440px;
+    justify-content: center;
+    margin-bottom: 12px; 
+    padding: 0 40px; /* Increased padding to squeeze the alphabet grid inward */
+  }
+
+  .key-row-mixed {
+    flex-direction: row;
+    width: 480px;
+    justify-content: space-between;
+    padding-left: 36px; /* Pulled utility side buttons out of the corner bounds */
+    padding-right: 36px;
+    margin-bottom: 12px; 
+  }
+
+  .inner-chars {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .bottom-row {
+    margin-top: 0px;
+    padding: 0 36px;
+    justify-content: space-between;
+  }
+
+  /* --- Typography & Base Key Elements --- */
+  .key {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 500;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 12px; 
+    width: 34px; /* Narrowed width down more to completely fit within safe targets */
+    height: 44px; 
+    text-align: center;
+    margin: 0 2px;
+  }
+
+  .key-active {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .action-key {
+    color: #ffffff;
+    font-size: 19px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    height: 44px;
+    text-align: center;
+  }
+
+  /* --- Specialty Custom Button Profiles --- */
+  .side-btn {
+    width: 48px;
+    font-size: 20px;
+  }
+
+  .caps-on {
+    background-color: #007aff;
+    color: #ffffff;
+  }
+
+  .delete-btn {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+  .delete-active {
+    background-color: #ef4444;
+    color: #ffffff;
+  }
+
+  .switch-btn {
+    width: 72px;
+    font-size: 16px;
+  }
+
+  .close-btn {
+    background-color: rgba(255, 255, 255, 0.04);
+    color: #94a3b8;
+  }
+
+  .space-btn {
+    width: 220px; /* Reduced space bar scale proportionally to keep layout matching */
+    background-color: rgba(255, 255, 255, 0.14);
+    font-size: 18px;
+  }
+  .space-active {
+    background-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .action-active {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>
+>>>>>>> 4ec62ed (update)

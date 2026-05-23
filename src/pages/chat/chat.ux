@@ -3,15 +3,36 @@
 <template>
   <div class="page-wrapper">
 
-    <div class="top-bar" show="{{ !isKeyboardOpen }}">
-      <div class="header-controls">
-        <div class="btn-icon bg-gray" @click="goBack">
-          <text class="icon-text">←</text>
+    <div class="main-content-container animate-fade-in" show="{{ !isKeyboardOpen }}">
+      
+      <div class="top-bar">
+        <div class="header-controls">
+          <div class="btn-icon bg-gray" @click="goBack">
+            <text class="icon-text">←</text>
+          </div>
+        </div>
+<<<<<<< HEAD
+=======
+
+        <text class="app-title">VelaAI</text>
+
+        <div class="status-pill">
+          <div class="status-dot"></div>
+          <text class="status-label">{{ syncStatus === 'Connected' ? 'On' : 'Off' }}</text>
+        </div>
+>>>>>>> 4ec62ed (update)
+      </div>
+
+      <div class="input-row">
+        <div class="input-box" @click="openKeyboard">
+          <text class="input-text">{{ typedPrompt ? typedPrompt : 'Tap to start chat' }}</text>
+        </div>
+        <div class="send-btn-container" @click="dispatchRequest">
+          <image src="../../common/Send.png" class="send-image-btn"></image>
         </div>
       </div>
 
-      <text class="app-title">VelaAI</text>
-
+<<<<<<< HEAD
       <div class="status-pill">
         <div class="status-dot"></div>
         <text class="status-label">{{ syncStatus === 'Connected' ? 'On' : 'Off' }}</text>
@@ -39,6 +60,29 @@
         <image src="../../common/Send.png" class="kb-send-image"></image>
       </div>
     </div>
+=======
+      <scroller class="response-viewport" scroll-y="true">
+        <div class="response-wrapper">
+          <text class="response-text">{{ aiResponse }}</text>
+        </div>
+      </scroller>
+
+    </div>
+
+    <div class="kb-preview-bar animate-fade-in" show="{{ isKeyboardOpen }}">
+      <text class="kb-preview-text">{{ displayPrompt }}</text>
+      <div class="kb-send-btn-wrap" @click="sendFromKeyboard">
+        <image src="../../common/Send.png" class="kb-send-image"></image>
+      </div>
+    </div>
+
+    <custom-keyboard 
+      is-visible="{{ isKeyboardOpen }}" 
+      onkeypress="handleKeyPress" 
+      ondelete="handleDelete" 
+      onclose="closeKeyboard">
+    </custom-keyboard>
+>>>>>>> 4ec62ed (update)
 
     <custom-keyboard 
       is-visible="{{ isKeyboardOpen }}" 
@@ -63,7 +107,11 @@
       typedPrompt: '',
       displayPrompt: '...',
       aiResponse: 'Ready. Type a message above.',
+<<<<<<< HEAD
       messageHistory: [], // Stores multi-turn conversation and reasoning
+=======
+      messageHistory: [], 
+>>>>>>> 4ec62ed (update)
       isGenerating: false,
       isKeyboardOpen: false,
       syncStatus: 'Checking...',
@@ -76,6 +124,7 @@
     },
 
     onShow() {
+      this.isPageDestroyed = false;
       this.loadConfiguration();
     },
 
@@ -88,6 +137,7 @@
       storage.get({
         key: 'API_KEY',
         success: (data) => {
+          if (this.isPageDestroyed) return;
           if (data && data.trim() !== '') {
             this.savedKey = data.trim();
             this.verifyKey();
@@ -105,7 +155,7 @@
     startPing() {
       this.stopPing();
       this.pingIntervalId = setInterval(() => {
-        if (!this.isGenerating && !this.isKeyboardOpen) {
+        if (!this.isPageDestroyed && !this.isGenerating && !this.isKeyboardOpen) {
           this.verifyKey();
         }
       }, 45000);
@@ -171,11 +221,17 @@
       this.isGenerating = true;
       this.aiResponse = 'Thinking...';
       
+<<<<<<< HEAD
       // Clear inputs
       this.typedPrompt = ''; 
       this.refreshDisplayPrompt();
 
       // 1. Push user message to conversation history
+=======
+      this.typedPrompt = ''; 
+      this.refreshDisplayPrompt();
+
+>>>>>>> 4ec62ed (update)
       this.messageHistory.push({
         role: 'user',
         content: userMessage
@@ -183,13 +239,19 @@
 
       const authHeaderValue = 'Bearer ' + cleanToken;
       
+<<<<<<< HEAD
       // --- LIVE CONTEXT INJECTION ---
+=======
+>>>>>>> 4ec62ed (update)
       const now = new Date();
       const dateString = now.toDateString(); 
       const timeString = now.toLocaleTimeString();
       const dynamicSystemMessage = `${this.systemPrompt} The current date is ${dateString} and the local time is ${timeString}. The user is currently located in Egypt.`;
       
+<<<<<<< HEAD
       // 2. Build full payload with dynamic system prompt and conversation history
+=======
+>>>>>>> 4ec62ed (update)
       const payloadMessages = [
         { role: 'system', content: dynamicSystemMessage },
         ...this.messageHistory
@@ -212,6 +274,7 @@
         }),
         responseType: 'json',
         success: (res) => {
+          if (this.isPageDestroyed) return;
           this.isGenerating = false;
           let responseData = res.data;
           
@@ -223,8 +286,11 @@
             this.aiResponse = responseData && responseData.error ? 
               'API Error: ' + responseData.error.message : 
               'HTTP Error: ' + res.code;
+<<<<<<< HEAD
             
             // Pop the failed user message out of history
+=======
+>>>>>>> 4ec62ed (update)
             this.messageHistory.pop();
             return;
           }
@@ -233,7 +299,10 @@
             const assistantMsg = responseData.choices[0].message;
             this.aiResponse = assistantMsg.content ? assistantMsg.content.trim() : 'Processing complete.';
             
+<<<<<<< HEAD
             // 3. Save AI response to history, preserving reasoning data if it exists
+=======
+>>>>>>> 4ec62ed (update)
             let historyEntry = {
               role: 'assistant',
               content: assistantMsg.content
@@ -249,11 +318,16 @@
             this.aiResponse = 'Model Error: ' + responseData.error.message;
             this.messageHistory.pop();
           } else {
+<<<<<<< HEAD
             this.aiResponse = 'Unknown format: ' + JSON.stringify(responseData).substring(0, 60) + '...';
+=======
+            this.aiResponse = 'Unknown format...';
+>>>>>>> 4ec62ed (update)
             this.messageHistory.pop();
           }
         },
         fail: (data, code) => {
+          if (this.isPageDestroyed) return;
           this.isGenerating = false;
           this.aiResponse = 'Network Error. Code: ' + code;
           this.syncStatus = 'Offline';
@@ -309,13 +383,37 @@
 
 <style>
   .page-wrapper {
+<<<<<<< HEAD
     width: 480px; 
     height: 480px;
     background-color: #050508; 
+=======
+    background-image: url('../../common/bg.png');
+    background-size: cover;
+    background-position: center;
+    width: 480px; 
+    height: 480px;
+>>>>>>> 4ec62ed (update)
     flex-direction: column;
     align-items: center;
     padding-top: 10px; 
   }
+<<<<<<< HEAD
+=======
+
+  /* --- Animation Wrapper --- */
+  .main-content-container {
+    flex-direction: column;
+    align-items: center;
+    width: 480px;
+  }
+
+  .animate-fade-in {
+    animation-name: fadeIn;
+    animation-duration: 400ms;
+    animation-fill-mode: forwards;
+  }
+>>>>>>> 4ec62ed (update)
   
   /* --- Header Area --- */
   .top-bar {
@@ -340,7 +438,11 @@
   .btn-icon {
     width: 52px; 
     height: 52px;
+<<<<<<< HEAD
     border-radius: 26px;
+=======
+    border-radius: 100px;
+>>>>>>> 4ec62ed (update)
     justify-content: center;
     align-items: center;
   }
@@ -415,11 +517,19 @@
     height: 220px; 
     background-color: #0d0e14; 
     border-radius: 30px; 
+<<<<<<< HEAD
     flex-direction: column; /* Required for vertical list scrolling */
   }
   .response-wrapper {
     padding: 24px; 
     padding-bottom: 40px; /* Extra padding so the last line clears the curved bezel */
+=======
+    flex-direction: column; 
+  }
+  .response-wrapper {
+    padding: 24px; 
+    padding-bottom: 40px; 
+>>>>>>> 4ec62ed (update)
     flex-direction: column;
   }
   .response-text {
@@ -428,11 +538,18 @@
     line-height: 36px;
   }
   
+<<<<<<< HEAD
   /* --- Keyboard Preview Bar (Floating Pill) --- */
   .kb-preview-bar {
     position: absolute;
     bottom: 300px; 
     left: 40px;    
+=======
+  /* --- Keyboard Preview Bar --- */
+  .kb-preview-bar {
+    position: absolute;
+    bottom: 300px;    
+>>>>>>> 4ec62ed (update)
     width: 400px;
     height: 64px;
     background-color: #1e2230;
@@ -463,4 +580,17 @@
     height: 24px;
     object-fit: contain;
   }
+<<<<<<< HEAD
+=======
+
+  /* --- Keyframes --- */
+  @keyframes fadeIn {
+    from { 
+      transform: translateY(15px);
+    }
+    to { 
+      transform: translateY(0px);
+    }
+  }
+>>>>>>> 4ec62ed (update)
 </style>

@@ -9,11 +9,18 @@
       </div>
     </div>
 
+<<<<<<< HEAD
     <div class="menu-container" if="{{ !isSplash }}">
       <div class="header">
         <image src="../../common/AI.png" class="menu-logo"></image>
         <text class="menu-title">Vela AI</text>
         <text class="menu-subtitle">Assistant Ready</text>
+=======
+    <div class="menu-container animate-fade-in" if="{{ !isSplash }}">
+      <div class="header">
+        <image src="../../common/AI.png" class="menu-logo"></image>
+        <text class="menu-title">Vela AI</text>
+>>>>>>> 4ec62ed (update)
       </div>
 
       <div class="button-list">
@@ -26,15 +33,26 @@
           <text class="btn-text text-gray">Reset Token</text>
           <text class="btn-icon text-gray">✕</text>
         </div>
+<<<<<<< HEAD
       </div>
       
       <text class="footer-version">v1.0.0 stable</text>
+=======
+
+        <div class="pill-btn-exit bg-red" @click="ExitApplication">
+          <text class="btn-text">Exit</text>
+        </div>
+      </div>
+      
+      <text class="footer-version">v1.1.0 stable</text>
+>>>>>>> 4ec62ed (update)
     </div>
 
   </div>
 </template>
 
 <script>
+  import app from '@system.app'
   import router from '@system.router'
   import storage from '@system.storage'
   import vibrator from '@system.vibrator'
@@ -44,15 +62,33 @@
     private: {
       isSplash: true
     },
+<<<<<<< HEAD
 
     onInit() {
       // Dynamically create or read a global app flag
+=======
+  
+    ExitApplication() {
+      try { 
+        vibrator.vibrate({ mode: 'short' }); 
+      } catch(e){}
+
+      if (this.stopPing) {
+        this.stopPing();
+      }
+      prompt.showToast({ message: 'Exiting App' });
+      app.terminate();
+    },
+
+    onInit() {
+>>>>>>> 4ec62ed (update)
       const globalApp = this.$app.$def;
       if (globalApp.isFirstIndexLoad === undefined) {
         globalApp.isFirstIndexLoad = true;
       }
 
       if (globalApp.isFirstIndexLoad) {
+<<<<<<< HEAD
         // App just launched. Show splash sequence.
         this.isSplash = true;
         
@@ -67,6 +103,18 @@
         // Skip splash, and do a silent verification check.
         this.isSplash = false;
         this.verifyTokenAndRoute(false); // Signal it is a silent check
+=======
+        this.isSplash = true;
+        
+        // Match the 1.5s loading animation + 300ms transition window
+        setTimeout(() => {
+          this.verifyTokenAndRoute(true); 
+          globalApp.isFirstIndexLoad = false;
+        }, 1800);
+      } else {
+        this.isSplash = false;
+        this.verifyTokenAndRoute(false); 
+>>>>>>> 4ec62ed (update)
       }
     },
 
@@ -75,17 +123,26 @@
         key: 'API_KEY',
         success: (data) => {
           if (data && typeof data === 'string' && data.trim() !== '') {
+<<<<<<< HEAD
             // Token found! We stay here.
+=======
+>>>>>>> 4ec62ed (update)
             if (isFirstLoadCheck) {
                this.isSplash = false;
             }
           } else {
+<<<<<<< HEAD
             // No token found. Route directly to pairing screen
+=======
+>>>>>>> 4ec62ed (update)
             router.replace({ uri: '/pages/key' });
           }
         },
         fail: () => {
+<<<<<<< HEAD
           // Error reading storage, default to pairing screen
+=======
+>>>>>>> 4ec62ed (update)
           router.replace({ uri: '/pages/key' });
         }
       });
@@ -120,8 +177,11 @@
     executeLogout() {
       storage.delete({
         key: 'API_KEY',
+<<<<<<< HEAD
         // Using 'complete' ensures it routes even if the storage was already empty,
         // preventing a silent fail and the automatic splash reload.
+=======
+>>>>>>> 4ec62ed (update)
         complete: () => {
           prompt.showToast({ message: 'Token Deleted' });
           router.replace({ uri: '/pages/key' }); 
@@ -135,16 +195,40 @@
   .page-wrapper {
     width: 480px;
     height: 480px;
+<<<<<<< HEAD
     background-color: #050508;
+=======
+    /* Image Background Implementation */
+    background-image: url('../../common/bg.png');
+    background-size: cover;
+    background-position: center;
+>>>>>>> 4ec62ed (update)
     justify-content: center;
     align-items: center;
   }
 
+<<<<<<< HEAD
+=======
+  /* --- Transition Animations --- */
+
+  .animate-fade-in {
+    animation-name: fadeIn;
+    animation-duration: 400ms;
+    animation-fill-mode: forwards;
+  }
+
+>>>>>>> 4ec62ed (update)
   /* --- Splash Styles --- */
   .splash-container {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+<<<<<<< HEAD
+=======
+    width: 480px;
+    height: 480px;
+    background-color: rgba(255, 255, 255, 0);
+>>>>>>> 4ec62ed (update)
   }
   .splash-logo {
     width: 140px;
@@ -166,41 +250,132 @@
     overflow: hidden;
   }
   .loader-fill {
+<<<<<<< HEAD
     width: 100px;
+=======
+    width: 200px;
+>>>>>>> 4ec62ed (update)
     height: 6px;
     background-color: #007aff;
     animation-name: loading;
     animation-duration: 1500ms;
+<<<<<<< HEAD
+=======
+    animation-fill-mode: forwards;
+>>>>>>> 4ec62ed (update)
   }
 
   /* --- Menu Styles --- */
   .menu-container {
+<<<<<<< HEAD
     width: 380px; /* Safe area for squircle corners */
     height: 440px;
     flex-direction: column;
     align-items: center;
     justify-content: center; /* This perfectly centers the whole group vertically */
+=======
+    width: 380px; 
+    height: 440px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; 
+    background-color: rgba(255, 255, 255, 0);
+>>>>>>> 4ec62ed (update)
   }
   .header {
     flex-direction: column;
     align-items: center;
+<<<<<<< HEAD
     margin-bottom: 24px; /* Space between header and buttons */
   }
   .menu-logo {
     width: 60px;
     height: 60px;
     border-radius: 30px;
+=======
+    margin-bottom: 24px; 
+  }
+  .menu-logo {
+    width: 160px;
+    height: 160px;
+>>>>>>> 4ec62ed (update)
     margin-bottom: 8px;
+    border-radius: 100%;
   }
   .menu-title {
     font-size: 32px;
     font-weight: bold;
     color: #ffffff;
   }
+<<<<<<< HEAD
   .menu-subtitle {
     font-size: 18px;
     color: #10b981; /* Green "online" look */
+=======
+
+  .button-list {
+    flex-direction: column;
+    width: 360px;
+    align-items: center;
+  }
+  .pill-btn {
+    width: 340px;
+    height: 84px; 
+    border-radius: 42px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 30px;
+    padding-right: 24px;
+    margin-bottom: 10px;
+  }
+  .bg-blue { background-color: #007aff; }
+  .bg-dark { background-color: #1e2230; }
+  .bg-red { background-color: #ff3b30; }
+  .bg-settings { background-color: #ff3b30; }
+
+  .pill-btn-exit {
+    width: 150px;
+    height: 84px; 
+    border-radius: 42px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center; 
+    margin-top: 10px; 
+    margin-bottom: 10px;
+  }
+
+  .btn-text {
+    font-size: 26px;
+>>>>>>> 4ec62ed (update)
     font-weight: bold;
+    color: #ffffff;
+  }
+  .btn-icon {
+    font-size: 24px;
+    color: #ffffff;
+  }
+  .text-gray { color: #94a3b8; }
+
+  .footer-version {
+    font-size: 14px;
+    color: #334155;
+    margin-top: 10px; 
+  }
+
+  /* --- Keyframe Declarations --- */
+  @keyframes loading {
+    from { width: 0px; }
+    to { width: 200px; }
+  }
+
+  @keyframes fadeIn {
+    from { 
+      transform: translateY(15px);
+    }
+    to { 
+      transform: translateY(0px);
+    }
   }
 
   .button-list {
